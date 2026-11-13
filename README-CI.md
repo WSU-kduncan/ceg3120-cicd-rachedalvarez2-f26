@@ -81,6 +81,45 @@ After a secret is saved, GitHub won't show its value again.
 
 The token only lives in GitHub secrets. It's never in any file in this repo.
 
+### CI with GitHub Actions
+
+Part 2 version of the workflow (commit permalink): [docker-ci.yml at 053027c](https://github.com/WSU-kduncan/ceg3120-cicd-rachedalvarez2-f26/blob/053027cadb5e16f6292e6378b686aa991f719ad7/.github/workflows/docker-ci.yml)
+
+#### Trigger
+
+```yaml
+on:
+  push:
+    branches:
+      - main
+```
+
+The workflow ran when a commit was pushed to `main`.
+
+#### Steps
+
+| Step | Action | What it does |
+| --- | --- | --- |
+| Check out the repository | `actions/checkout@v7` | Copies the repo onto the runner so the build can see the `Dockerfile` and `web-content/` |
+| Log in to DockerHub | `docker/login-action@v4` | Logs in using the `DOCKER_USERNAME` and `DOCKER_TOKEN` secrets |
+| Set up Docker Buildx | `docker/setup-buildx-action@v4` | Sets up the Buildx builder that `build-push-action` uses |
+| Build and push the image | `docker/build-push-action@v7` | Builds from the `Dockerfile` in the repo root (`context: .`) and pushes `<username>/project6-site:latest` |
+
+All four come from GitHub (`actions`) or Docker (`docker`).
+
+#### Changes needed to use this in a different repository
+
+In the workflow:
+
+- `tags: ${{ secrets.DOCKER_USERNAME }}/project6-site:latest` - change `project6-site` to your DockerHub repository name.
+- `branches: - main` - change it if your default branch is named something else.
+
+In the repository:
+
+- Create the `DOCKER_USERNAME` and `DOCKER_TOKEN` secrets with your own DockerHub username and a Read & Write PAT.
+- Keep the `Dockerfile` in the repo root and the site in `web-content/`, or update `context:` and the `COPY` line to match.
+- Put the workflow file in `.github/workflows/`.
+
 ## Testing and Proof
 
 ### 1. Local run
@@ -101,3 +140,10 @@ Both `index.html` and `trails.html` load at `localhost:8080` with the CSS applie
 ![Actions secrets page](images/repo-secrets.png)
 
 The repo's Actions secrets page lists `DOCKER_USERNAME` and `DOCKER_TOKEN`. GitHub doesn't show the values.
+
+
+### 3. Main trigger
+
+![Workflow run from push to main](images/main-trigger.png)
+
+A successful run that started from a push to `main`, with commit SHA `053027c` showing.
