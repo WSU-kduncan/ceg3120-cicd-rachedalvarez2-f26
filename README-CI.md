@@ -54,6 +54,33 @@ docker run -d --name project6-site -p 8080:80 tw0s41nt/project6-site:latest
 
 Then open `http://localhost:8080` and `http://localhost:8080/trails.html` in a browser. To stop and remove it: `docker rm -f project6-site`.
 
+
+## Part 2 - GitHub Actions and DockerHub
+
+### Creating a DockerHub PAT for GitHub Actions
+
+I made a separate token for GitHub Actions instead of reusing the one from my laptop, so I can revoke one without breaking the other.
+
+1. Sign in at https://hub.docker.com and go to **Account settings > Personal access tokens**.
+2. Click **Generate new token**. I named it `github-actions-project6`.
+3. Set **Access permissions** to **Read & Write**.
+4. Click **Generate** and copy the token right away.
+
+### Setting repository secrets
+
+1. In the GitHub repo, go to **Settings > Secrets and variables > Actions**.
+2. Click **New repository secret**.
+3. Enter the name and value and click **Add secret**. Do it once for each secret.
+
+After a secret is saved, GitHub won't show its value again.
+
+| Secret | What it holds | Used for |
+| --- | --- | --- |
+| `DOCKER_USERNAME` | My DockerHub username | Logging in to DockerHub, and as the first part of the image name |
+| `DOCKER_TOKEN` | The Read & Write PAT from above | The password for `docker/login-action` |
+
+The token only lives in GitHub secrets. It's never in any file in this repo.
+
 ## Testing and Proof
 
 ### 1. Local run
@@ -67,3 +94,10 @@ Then open `http://localhost:8080` and `http://localhost:8080/trails.html` in a b
 ![Trails page in browser](images/local-run-trails.png)
 
 Both `index.html` and `trails.html` load at `localhost:8080` with the CSS applied.
+
+
+### 2. Repository secrets
+
+![Actions secrets page](images/repo-secrets.png)
+
+The repo's Actions secrets page lists `DOCKER_USERNAME` and `DOCKER_TOKEN`. GitHub doesn't show the values.
