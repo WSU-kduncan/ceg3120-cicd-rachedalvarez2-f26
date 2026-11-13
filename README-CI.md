@@ -120,6 +120,26 @@ In the repository:
 - Keep the `Dockerfile` in the repo root and the site in `web-content/`, or update `context:` and the `COPY` line to match.
 - Put the workflow file in `.github/workflows/`.
 
+### Testing & Validating (Part 2)
+
+**Checking that the workflow worked:**
+
+1. Push a commit to `main`.
+2. Open the repo's **Actions** tab. A run should show up for that commit.
+3. Click the run and the `build-and-push` job. Every step should have a green check, and the build step's log ends with the image being pushed.
+4. On DockerHub, the `latest` tag's "Last pushed" time should match when the run finished.
+
+**Checking that the image works:**
+
+```bash
+docker pull tw0s41nt/project6-site:latest
+docker run -d --name project6-site -p 8080:80 tw0s41nt/project6-site:latest
+```
+
+Then open `http://localhost:8080` and make sure the newest change to the site is there. If `docker pull` says the image is up to date, you're still on the old one locally, so remove it with `docker rm -f project6-site` and `docker image rm tw0s41nt/project6-site:latest`, then pull again.
+
+**DockerHub repository:** https://hub.docker.com/r/tw0s41nt/project6-site
+
 ## Testing and Proof
 
 ### 1. Local run
@@ -147,3 +167,20 @@ The repo's Actions secrets page lists `DOCKER_USERNAME` and `DOCKER_TOKEN`. GitH
 ![Workflow run from push to main](images/main-trigger.png)
 
 A successful run that started from a push to `main`, with commit SHA `053027c` showing.
+
+
+### 4. Branch negative test
+
+![Commit on branch-test](images/branch-negative-commit.png)
+
+I pushed commit `e6cc478` to a branch called `branch-test`. It shows up on that branch, and it has no check mark next to it, while the `main` commits do.
+
+![Actions tab with no run for branch-test](images/branch-negative-actions.png)
+
+The Actions tab only lists runs from `main`. Nothing ran for the `branch-test` commit, so the workflow really only runs for `main`.
+
+### 5. Change to image
+
+![Site change after workflow](images/change-to-image.png)
+
+I added "Now built automatically with GitHub Actions." to the home page and pushed it to `main`. After run #4 finished, I pulled the new `latest` image, ran it, and the browser shows the new line.
