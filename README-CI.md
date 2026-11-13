@@ -31,6 +31,8 @@ From the root of the repo:
 docker build -t tw0s41nt/project6-site:latest .
 ```
 
+**Tagging for DockerHub:** to push to DockerHub, the image name has to be `<dockerhub-username>/<repository>:<tag>`, so mine is `tw0s41nt/project6-site:latest`. If the name doesn't start with your username, `docker push` tries to push to an official library repo and gets denied. If you leave off `:<tag>`, Docker uses `latest`.
+
 ### Pushing to DockerHub
 
 ```bash
