@@ -53,3 +53,17 @@ docker run -d --name project6-site -p 8080:80 tw0s41nt/project6-site:latest
 - `-p 8080:80` maps port 8080 on my machine to port 80 in the container, where Apache listens.
 
 Then open `http://localhost:8080` and `http://localhost:8080/trails.html` in a browser. To stop and remove it: `docker rm -f project6-site`.
+
+## Testing and Proof
+
+### 1. Local run
+
+![docker ps showing the container](images/local-run-ps.png)
+
+`docker ps` shows `tw0s41nt/project6-site:latest` running with `0.0.0.0:8080->80/tcp`, the image I built and pulled works.
+
+![Home page in browser](images/local-run-index.png)
+
+![Trails page in browser](images/local-run-trails.png)
+
+Both `index.html` and `trails.html` load at `localhost:8080` with the CSS applied.
