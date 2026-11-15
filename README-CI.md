@@ -142,6 +142,30 @@ Then open `http://localhost:8080` and make sure the newest change to the site is
 
 **DockerHub repository:** https://hub.docker.com/r/tw0s41nt/project6-site
 
+## Part 3 - Semantic Versioning
+
+### Generating tags
+
+```bash
+# See all tags in the repo
+git tag -l
+
+# See tags along with their messages
+git tag -n
+
+# Create an annotated tag on the latest commit
+git tag -a v1.0.0 -m "First release of the trails site"
+
+# Push one tag to GitHub (a normal git push doesn't send tags)
+git push origin v1.0.0
+```
+
+I used `MAJOR.MINOR.PATCH`:
+
+- **MAJOR** for big changes that break how the site works or looks.
+- **MINOR** for new content or features, like adding a page or a section.
+- **PATCH** for small fixes, like a typo.
+
 ## Testing and Proof
 
 ### 1. Local run
