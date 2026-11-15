@@ -234,6 +234,71 @@ docker run -d --name site-1-1 -p 8081:80 tw0s41nt/project6-site:1.1
 
 **DockerHub repository with tags:** https://hub.docker.com/r/tw0s41nt/project6-site/tags
 
+### Goal
+
+The goal of this project was to stop building and pushing my website's Docker image by hand. In Project 5 I ran `docker build` and `docker push` every time. In this project I set up GitHub Actions so that GitHub builds the image and pushes it to DockerHub for me.
+
+It happened in two stages:
+
+1. **Part 2:** every push to `main` built a new image and pushed it as `latest`.
+2. **Part 3:** only pushing a git tag like `v1.1.0` starts a build, and the image gets pushed with three tags: `latest`, the major version (`1`), and the major.minor version (`1.1`). Old versions stay on DockerHub, so I can roll back to them.
+
+### Tools and their roles
+
+| Tool | Role in this project |
+| --- | --- |
+| Git | Tracks my changes locally. Tags (`v1.0.0`, `v1.1.0`) mark which commits are releases |
+| GitHub | Hosts the repository and stores the DockerHub login as repository secrets |
+| GitHub Actions | Runs the workflow in [`.github/workflows/docker-ci.yml`](.github/workflows/docker-ci.yml) that builds and pushes the image |
+| Docker | Builds the image from the [`Dockerfile`](Dockerfile) and runs containers to test it |
+| `httpd:2.4` | Official Apache image that my site image is built on |
+| DockerHub | Public container registry that stores my image and all its tags |
+| `docker/metadata-action` | Turns a git tag like `v1.1.0` into the image tags `latest`, `1`, and `1.1` |
+| `docker/login-action`, `docker/setup-buildx-action`, `docker/build-push-action` | Log in to DockerHub, set up the builder, and build and push the image |
+
+### Diagram
+
+```mermaid
+flowchart TB
+    subgraph local["My cloned repository (laptop)"]
+        direction LR
+        edit["Edit files in web-content/"]
+        commit["git add + git commit"]
+        tag["git tag -a v1.1.0"]
+        push["git push origin v1.1.0"]
+        edit --> commit --> tag --> push
+    end
+
+    subgraph gh["GitHub"]
+        repo["Repository<br/>ceg3120-cicd-rachedalvarez2-f26"]
+        trigger{"Pushed ref is a<br/>tag matching v*.*.*?"}
+        stop["No workflow run"]
+        subgraph runner["GitHub Actions runner (docker-ci.yml)"]
+            s1["1. actions/checkout"]
+            s2["2. docker/metadata-action<br/>v1.1.0 to latest, 1, 1.1"]
+            s3["3. docker/login-action<br/>DOCKER_USERNAME + DOCKER_TOKEN secrets"]
+            s4["4. docker/setup-buildx-action"]
+            s5["5. docker/build-push-action<br/>builds from Dockerfile"]
+            s1 --> s2 --> s3 --> s4 --> s5
+        end
+        repo --> trigger
+        trigger -- no --> stop
+        trigger -- yes --> s1
+    end
+
+    subgraph hub["DockerHub"]
+        direction LR
+        img["tw0s41nt/project6-site"]
+        tags["Tags: latest, 1, 1.1<br/>(1.0 stays on the old image)"]
+        img --- tags
+    end
+
+    push --> repo
+    s5 -- "push image" --> img
+```
+
+When I push a tag, GitHub checks whether it matches `v*.*.*`. If it does, a runner checks out the code at that tag, works out the image tags, logs in to DockerHub with the repository secrets, builds the image from the `Dockerfile`, and pushes it. A plain commit with no tag goes to GitHub but doesn't start anything.
+
 ## Testing and Proof
 
 ### 1. Local run
@@ -317,3 +382,17 @@ After releasing `v1.1.0`, `latest`, `1`, and `1.1` all share a new digest, while
 ![Containers from 1.0 and 1.1 side by side](images/rollback.png)
 
 I ran one container from `:1.0` on port 8080 and one from `:1.1` on port 8081. Port 8081 shows the version 1.1 footer and the new "For families, friends, or just you" heading on the trails page. Port 8080 still shows version 1.0 without that heading, so I can roll back to 1.0 at any time.
+
+## Sources
+
+| Source | What I used it for |
+| --- | --- |
+| [GitHub - actions/checkout](https://github.com/actions/checkout) | Checking out the repo, current version (v7) |
+| [Git - Tagging](https://git-scm.com/book/en/v2/Git-Basics-Tagging) | `git tag -l`, annotated tags, and pushing tags |
+| [Semantic Versioning 2.0.0](https://semver.org/) | What MAJOR, MINOR, and PATCH mean |
+| [Mermaid - Flowchart syntax](https://mermaid.js.org/syntax/flowchart.html) | Building the diagram with subgraphs |
+
+### Generative AI
+
+- **Website:** the Miami Valley Trails site is from Project 5, where AI picked the theme (see that project's citations).
+- **AI:** I gave it the Project 6 instructions, the rubric, and my read me for styling purposes.
