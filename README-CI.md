@@ -166,6 +166,74 @@ I used `MAJOR.MINOR.PATCH`:
 - **MINOR** for new content or features, like adding a page or a section.
 - **PATCH** for small fixes, like a typo.
 
+### Semantic Versioning Container Images with GitHub Actions
+
+Workflow file: [`.github/workflows/docker-ci.yml`](.github/workflows/docker-ci.yml)
+
+#### Trigger
+
+```yaml
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+```
+
+The workflow only runs when a tag that looks like `v1.1.0` is pushed. I removed the `branches: - main` trigger, so ordinary commits to `main` don't build anything anymore.
+
+#### Steps
+
+| Step | Action | What it does |
+| --- | --- | --- |
+| Check out the repository | `actions/checkout@v7` | Copies the repo at the tagged commit onto the runner |
+| Generate image tags from the git tag | `docker/metadata-action@v6` | Reads the git tag and outputs the image tags. For `v1.1.0` it outputs `project6-site:1`, `project6-site:1.1`, and `project6-site:latest` |
+| Log in to DockerHub | `docker/login-action@v4` | Logs in with the `DOCKER_USERNAME` and `DOCKER_TOKEN` secrets |
+| Set up Docker Buildx | `docker/setup-buildx-action@v4` | Sets up the builder |
+| Build and push the image | `docker/build-push-action@v7` | Builds from the `Dockerfile` and pushes with every tag from the metadata step (`tags: ${{ steps.meta.outputs.tags }}`) |
+
+The metadata step's settings:
+
+```yaml
+images: ${{ secrets.DOCKER_USERNAME }}/project6-site
+tags: |
+  type=semver,pattern={{major}}
+  type=semver,pattern={{major}}.{{minor}}
+```
+
+`type=semver` reads the version from the git tag, and `pattern` picks which parts to keep. I didn't have to add `latest` myself, because `metadata-action` adds it automatically when the tag is a semver version.
+
+#### Changes needed to use this in a different repository
+
+In the workflow:
+
+- `images: ${{ secrets.DOCKER_USERNAME }}/project6-site` - change `project6-site` to your DockerHub repository name.
+- `- 'v*.*.*'` - change the pattern if your tags don't start with `v`.
+
+In the repository:
+
+- Same as Part 2: the `DOCKER_USERNAME` and `DOCKER_TOKEN` secrets, the `Dockerfile` in the root, and the workflow in `.github/workflows/`.
+- Tag releases as `vMAJOR.MINOR.PATCH` and push the tag with `git push origin <tag>`.
+
+### Testing & Validating (Part 3)
+
+**Checking that the workflow worked:**
+
+1. Create and push a tag: `git tag -a v1.1.0 -m "..."` then `git push origin v1.1.0`.
+2. In the **Actions** tab, the new run should be labeled with the tag (`v1.1.0`) instead of a branch name.
+3. Every step should have a green check. The log for the metadata step lists the tags it generated.
+4. On DockerHub, the **Tags** tab should show `latest`, `1`, and `1.1`, all pushed at the same time.
+
+**Checking that the image works:**
+
+```bash
+docker run -d --name site-1-0 -p 8080:80 tw0s41nt/project6-site:1.0
+docker run -d --name site-1-1 -p 8081:80 tw0s41nt/project6-site:1.1
+```
+
+`http://localhost:8081` should show version 1.1 of the site, and `http://localhost:8080` should still show version 1.0. On DockerHub, `1.1`, `1`, and `latest` should all have the same digest, and `1.0` should have a different one.
+
+**DockerHub repository with tags:** https://hub.docker.com/r/tw0s41nt/project6-site/tags
+
 ## Testing and Proof
 
 ### 1. Local run
@@ -210,3 +278,42 @@ The Actions tab only lists runs from `main`. Nothing ran for the `branch-test` c
 ![Site change after workflow](images/change-to-image.png)
 
 I added "Now built automatically with GitHub Actions." to the home page and pushed it to `main`. After run #4 finished, I pulled the new `latest` image, ran it, and the browser shows the new line.
+
+
+### 6. Tag trigger
+
+![git tag -l output](images/tag-trigger.png)
+
+`git tag -l` lists my two tags, `v1.0.0` and `v1.1.0`.
+
+![Workflow run from the v1.1.0 tag](images/tag-trigger-run.png)
+
+The Actions tab shows a successful run labeled `v1.1.0` instead of `main`, so pushing the tag is what started it.
+
+### 7. Tag negative test
+
+![Commit without a tag](images/tag-negative-commit.png)
+
+I pushed commit `b15acc4` to `main` without a tag. It shows up on GitHub with no check mark. The workflow-switch commit `a01534a` has no check mark either.
+
+![Actions tab with no run for the untagged commit](images/tag-negative-actions.png)
+
+The newest run is the one for `v1.0.0`. Nothing ran for `b15acc4`, so the Part 3 workflow only runs on tags.
+
+### 8. Tag set
+
+![DockerHub tags latest, 1, 1.0](images/tag-set.png)
+
+After pushing `v1.0.0`, DockerHub has `latest`, `1`, and `1.0`, all pushed by the GitHub Action and all on the same digest (`d3f28ae731f2`).
+
+### 9. Two releases
+
+![DockerHub tags and digests after v1.1.0](images/two-releases.png)
+
+After releasing `v1.1.0`, `latest`, `1`, and `1.1` all share a new digest, while `1.0` still has `d3f28ae731f2`. A new release moves `latest` and the major tag forward, but it doesn't overwrite the old release.
+
+### 10. Rollback
+
+![Containers from 1.0 and 1.1 side by side](images/rollback.png)
+
+I ran one container from `:1.0` on port 8080 and one from `:1.1` on port 8081. Port 8081 shows the version 1.1 footer and the new "For families, friends, or just you" heading on the trails page. Port 8080 still shows version 1.0 without that heading, so I can roll back to 1.0 at any time.
